@@ -1,0 +1,27 @@
+# Rebuilds the website whenever anything in content/ or build.py changes,
+# so edits made on github.com go live without running anything by hand.
+name: Build site
+on:
+  push:
+    branches: [main]
+    paths: ["content/**", "build.py"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install markdown
+      - run: python build.py
+      - name: Save the rebuilt site
+        run: |
+          git config user.name "Cryptotruth613"
+          git config user.email "336181485+Cryptotruth613@users.noreply.github.com"
+          git add docs
+          git diff --cached --quiet || git commit -m "Rebuild site"
+          git push
