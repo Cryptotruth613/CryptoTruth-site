@@ -193,9 +193,86 @@ def gallery(posts):
     return shell(1, "Meme Gallery", body, current="gallery/")
 
 
-def fragment_page(name, title, current):
-    frag = (SRC / "pages" / f"{name}.html").read_text(encoding="utf-8")
-    return shell(1, title, f'<main class="page">\n{frag}\n</main>', current=current)
+def md(text):
+    return markdown.markdown(text, extensions=["extra", "smarty"])
+
+
+def split_sections(text):
+    """Split a page into (heading, body) pairs at lines starting with '# '."""
+    sections, head, buf = [], None, []
+    for line in text.splitlines():
+        if line.startswith("# "):
+            if head is not None:
+                sections.append((head, "\n".join(buf).strip()))
+            head, buf = line[2:].strip(), []
+        else:
+            buf.append(line)
+    if head is not None:
+        sections.append((head, "\n".join(buf).strip()))
+    return sections
+
+
+def bullets(body):
+    """Read '- **Name** (note): text' or '- **Name:** text' lines."""
+    items = []
+    for line in body.splitlines():
+        m = re.match(r"-\s*\*\*(.+?):?\*\*\s*(?:\((.+?)\))?:?\s*(.*)", line.strip())
+        if m:
+            items.append((m.group(1).rstrip(":"), m.group(2) or "", m.group(3)))
+    return items
+
+
+def about_page():
+    text = (SRC / "pages" / "about.md").read_text(encoding="utf-8")
+    title, _, rest = text.partition("\n")
+    title = title.lstrip("# ").strip()
+    body = f"""<main class="page">
+<div class="narrow prose">
+  <h2 class="box-title">{e(title)}</h2>
+{md(rest)}
+</div>
+</main>"""
+    return shell(1, title, body, current="about/")
+
+
+def start_page():
+    sections = split_sections((SRC / "pages" / "start.md").read_text(encoding="utf-8"))
+    intro_title, intro_body = sections[0]
+    paras = [p for p in intro_body.split("\n\n") if p.strip()]
+    intro = f'    <p class="lede">{md(paras[0])[3:-4]}</p>\n' + "\n".join(f"    {md(p)}" for p in paras[1:])
+    aside = positions = path = ""
+    for head, body in sections[1:]:
+        key = head.lower()
+        if key == "the aside":
+            lines = body.split("\n", 1)
+            atitle = lines[0].lstrip("# ").strip()
+            atext = md(lines[1].strip() if len(lines) > 1 else "")[3:-4]
+            aside = f'    <aside class="aside"><b>{e(atitle)}</b>{atext}</aside>'
+        elif key == "positions":
+            lis = "\n".join(f"    <li><b>{e(n)}</b>{e(t)}</li>" for n, _, t in bullets(body))
+            positions = f'  <ul class="tenets" aria-label="Core positions">\n{lis}\n  </ul>'
+        else:
+            steps = "\n".join(
+                f'    <div class="step"><div class="n">{e(note.upper())}</div><h3>{e(n)}</h3><p>{e(t)}</p></div>'
+                for n, note, t in bullets(body))
+            path += f"""<section>
+  <h2 class="box-title">{e(head)}</h2>
+  <div class="path">
+{steps}
+  </div>
+</section>
+"""
+    body = f"""<main class="page">
+<section class="intro">
+  <div>
+    <h2 class="box-title">{e(intro_title)}</h2>
+{intro}
+{aside}
+  </div>
+{positions}
+</section>
+{path}</main>"""
+    return shell(1, "Start Here", body, current="start/")
 
 
 def post_page(p, prev_p, next_p):
@@ -282,8 +359,8 @@ def main():
     write("index.html", home(posts))
     write("posts/index.html", archive(posts))
     write("gallery/index.html", gallery(posts))
-    write("start/index.html", fragment_page("start", "Start Here", "start/"))
-    write("about/index.html", fragment_page("about", "About This Site", "about/"))
+    write("start/index.html", start_page())
+    write("about/index.html", about_page())
     write("404.html", not_found())
 
     for i, p in enumerate(posts):

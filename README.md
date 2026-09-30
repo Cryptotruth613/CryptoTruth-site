@@ -9,7 +9,7 @@ The CryptoTruth website. No trackers, no cookies, no analytics, no third-party s
     - `post.md`: a few header lines, a line with `---`, then the article.
     - `meme.mp4`: the meme video.
     - `poster.jpg`: a still frame shown before the video plays.
-  - `content/pages/`: the Start Here and About This Site pages.
+  - `content/pages/`: `start.md` (Start Here) and `about.md` (About This Site), plain text like the posts.
   - `content/assets/`: the site's styling and script.
 - `docs/` is the finished website that GitHub Pages publishes. It is generated; don't edit it by hand.
 - `build.py` turns `content/` into `docs/`.
